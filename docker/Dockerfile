@@ -3,6 +3,7 @@
 FROM docker.io/library/ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
@@ -11,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     jq \
     dos2unix \
     postgresql-client \
+    libatomic1 \
     && mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key -o /tmp/nodesource-repo.gpg.key \
     && gpg --batch --quiet --show-keys --with-colons /tmp/nodesource-repo.gpg.key | grep -q "fpr.*:6F71F525282841EEDAF851B42F59B5F99B1BE0B4:" \
@@ -22,16 +24,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && npm install -g pnpm \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Sui CLI via suiup (native binary for build arch – works on ARM and x86)
-ENV PATH="/root/.local/bin:/root/.suiup/bin:${PATH}"
-RUN curl -sSfL https://raw.githubusercontent.com/MystenLabs/suiup/main/install.sh | sh \
-    && echo y | suiup install sui \
+# Custom Sui CLI compiled without AVX2
+COPY sui /usr/local/bin/sui
+RUN chmod +x /usr/local/bin/sui \
     && sui --version
 
 WORKDIR /workspace
-ENV SUI_CONFIG_DIR=/root/.sui
+ENV SUI_CONFIG_DIR=/workspace/.sui
 
-COPY scripts/ /workspace/scripts/
+COPY docker/scripts/ /workspace/scripts/
 RUN dos2unix /workspace/scripts/*.sh && chmod +x /workspace/scripts/*.sh
+
+RUN sed -i 's|/workspace/builder-scaffold/docker/\.env\.sui|/workspace/.sui/.env.sui|g' /workspace/scripts/entrypoint.sh
 
 ENTRYPOINT ["/workspace/scripts/entrypoint.sh"]
