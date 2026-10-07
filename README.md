@@ -1,3 +1,7 @@
+# Builder Scaffold no BMI2 instruction set
+
+builder-scaffold Template to use with efctl for devices that don't support the ADX and BMI2 instruction set.
+
 # Builder Scaffold
 
 Templates and tools for building on EVE Frontier.
