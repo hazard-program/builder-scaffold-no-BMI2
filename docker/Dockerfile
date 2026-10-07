@@ -32,7 +32,7 @@ RUN chmod +x /usr/local/bin/sui \
 WORKDIR /workspace
 ENV SUI_CONFIG_DIR=/workspace/.sui
 
-COPY docker/scripts/ /workspace/scripts/
+COPY scripts/ /workspace/scripts/
 RUN dos2unix /workspace/scripts/*.sh && chmod +x /workspace/scripts/*.sh
 
 RUN sed -i 's|/workspace/builder-scaffold/docker/\.env\.sui|/workspace/.sui/.env.sui|g' /workspace/scripts/entrypoint.sh

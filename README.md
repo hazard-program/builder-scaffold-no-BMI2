@@ -2,7 +2,7 @@
 
 builder-scaffold Template to use with efctl for devices that don't support the ADX and BMI2 instruction set.
 
-# Note: old README follows, may be out of date.
+Note: Old README follows, may be out of date.
 
 # Builder Scaffold
 
