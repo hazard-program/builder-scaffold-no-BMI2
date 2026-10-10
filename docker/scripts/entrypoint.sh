@@ -6,7 +6,7 @@ SUI_CFG="${SUI_CONFIG_DIR:-/root/.sui}"
 KEYSTORE="$SUI_CFG/sui.keystore"
 CLIENT_YAML="$SUI_CFG/client.yaml"
 INIT_MARKER="$SUI_CFG/.initialized"
-ENV_FILE="/workspace/builder-scaffold/docker/.env.sui"
+ENV_FILE="${SUI_CFG}/.env.sui"
 
 # ---------- first-run: create keys ----------
 if [ ! -f "$INIT_MARKER" ]; then
@@ -105,7 +105,14 @@ echo "[sui-dev] Starting local Sui node..."
 if [ -n "${SUI_INDEXER_DB_URL:-}" ]; then
   sui start --with-faucet --force-regenesis --with-indexer="$SUI_INDEXER_DB_URL" --with-graphql=0.0.0.0:9125 &
 else
-  sui start --with-faucet --force-regenesis &
+  SUI_START_ARGS="--with-faucet --force-regenesis"
+if [ -n "${SUI_INDEXER_DB_URL:-}" ]; then
+  SUI_START_ARGS="$SUI_START_ARGS --with-indexer=$SUI_INDEXER_DB_URL"
+fi
+if [ "${SUI_GRAPHQL_ENABLED:-}" = "true" ]; then
+  SUI_START_ARGS="$SUI_START_ARGS --with-graphql=0.0.0.0:9125"
+fi
+sui start $SUI_START_ARGS &
 fi
 NODE_PID=$!
 trap 'kill "$NODE_PID" 2>/dev/null || true' EXIT
@@ -121,7 +128,16 @@ for i in $(seq 1 60); do
   sleep 1
 done
 echo "[sui-dev] RPC responding, waiting for full initialization..."
-sleep 5
+sleep 2
+echo "[sui-dev] Waiting for faucet on port 9123..."
+FAUCET_READY=0
+for i in $(seq 1 60); do
+  curl --max-time 10 -s -o /dev/null http://127.0.0.1:9123 2>/dev/null && { FAUCET_READY=1; break; }
+  sleep 1
+done
+if [ "$FAUCET_READY" -ne 1 ]; then
+  echo "[sui-dev] WARNING: faucet did not respond within 60s; funding may fail" >&2
+fi
 echo "[sui-dev] Node ready."
 
 # ---------- fund accounts ----------
@@ -132,8 +148,7 @@ for alias in ADMIN PLAYER_A PLAYER_B; do
   for attempt in 1 2 3; do
     sui client faucet 2>&1 && break
     [ "$attempt" -eq 3 ] && {
-      echo "[sui-dev] Faucet failed for $alias" >&2
-      exit 1
+      echo "[sui-dev] WARNING: faucet failed for $alias after 3 attempts; it will not be funded automatically. Retry later with: efctl env faucet --address <address>" >&2
     }
     sleep 2
   done

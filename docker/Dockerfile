@@ -1,4 +1,4 @@
-# Sui dev environment: CLI, local node, Node.js. Builds native for host arch (arm64/amd64).
+# Sui dev environment: CLI, local node, Node.js.
 # Ubuntu 24.04 required for Sui binary
 FROM docker.io/library/ubuntu:24.04
 
@@ -24,17 +24,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && npm install -g pnpm \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Custom Sui CLI compiled without AVX2
+# Original Sui CLI installation via suiup — retained but disabled.
+# ENV PATH="/root/.local/bin:/root/.suiup/bin:${PATH}"
+# RUN curl -sSfL https://raw.githubusercontent.com/MystenLabs/suiup/main/install.sh | sh \
+#     && echo y | suiup install sui \
+#     && sui --version
+
+# Comment out the above if you want to use your own compiled Sui Binary, place the Sui binary in the docker folder next to this file,
+# then uncomment the COPY and RUN commands.
+# The build context must be builder-scaffold/docker/.
+
 COPY sui /usr/local/bin/sui
 RUN chmod +x /usr/local/bin/sui \
     && sui --version
 
 WORKDIR /workspace
+
+# Preserve the existing configuration path.
 ENV SUI_CONFIG_DIR=/workspace/.sui
 
 COPY scripts/ /workspace/scripts/
 RUN dos2unix /workspace/scripts/*.sh && chmod +x /workspace/scripts/*.sh
 
+# Preserve the existing entrypoint path adjustment.
 RUN sed -i 's|/workspace/builder-scaffold/docker/\.env\.sui|/workspace/.sui/.env.sui|g' /workspace/scripts/entrypoint.sh
 
 ENTRYPOINT ["/workspace/scripts/entrypoint.sh"]
